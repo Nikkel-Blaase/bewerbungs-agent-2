@@ -1,0 +1,46 @@
+<div class="anschreiben">
+
+  {# ── Centered Header ──────────────────────────────────────────── #}
+  <div class="cover__header">
+    {% if anschreiben.photo_path %}
+      <img class="cover__photo" src="{{ anschreiben.photo_path }}" alt="">
+    {% endif %}
+    <div class="cover__name">{{ anschreiben.sender_name | upper }}</div>
+    {% if anschreiben.tagline %}
+      <div class="cover__tagline">{{ anschreiben.tagline }}</div>
+    {% endif %}
+    <div class="cover__contact">
+      {{ anschreiben.sender_address | replace('\n', ' · ') | safe }}
+      <br>
+      {{ anschreiben.sender_email }}{% if anschreiben.sender_phone %} · {{ anschreiben.sender_phone }}{% endif %}
+    </div>
+  </div>
+
+  {# ── Date ─────────────────────────────────────────────────────── #}
+  <div class="cover__date">{{ anschreiben.date }}</div>
+
+  {# ── Section heading ──────────────────────────────────────────── #}
+  <div class="cover__section-heading">
+    {{ 'BEWERBUNG' if language == 'de' else 'JOB APPLICATION' }}
+  </div>
+  <div class="cover__subject">{{ anschreiben.subject }}</div>
+  <hr class="cover__rule">
+
+  {# ── Opening paragraph ────────────────────────────────────────── #}
+  <p class="cover__intro">{{ anschreiben.opening_paragraph }}</p>
+
+  {# ── Two-column labeled body sections ─────────────────────────── #}
+  {% for label, para in anschreiben.section_labels | zip(anschreiben.body_paragraphs) %}
+  <div class="cover__row">
+    <div class="cover__label">{{ label }}</div>
+    <div class="cover__para">{{ para }}</div>
+  </div>
+  {% endfor %}
+
+  {# ── Closing ──────────────────────────────────────────────────── #}
+  <div class="cover__closing">
+    <p>{{ anschreiben.closing_formula }}</p>
+    <p class="cover__signature">{{ anschreiben.sender_name }}</p>
+  </div>
+
+</div>

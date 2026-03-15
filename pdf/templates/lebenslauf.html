@@ -1,0 +1,131 @@
+<div class="cv">
+
+  {# ── Header ────────────────────────────────────────────────────── #}
+  <header class="cv__header">
+    <h1 class="cv__name">{{ lebenslauf.name }}</h1>
+    {% if lebenslauf.highlights %}
+    <div class="cv__highlights">
+      {% for h in lebenslauf.highlights %}
+      <span class="cv__highlight">
+        <img class="cv__highlight-icon" src="../../icon-0{{ loop.index }}.svg" alt="">
+        {{ h }}
+      </span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </header>
+
+  <hr class="cv__header-rule">
+
+  {# ── Two-column body ─────────────────────────────────────────────── #}
+  <div class="cv__body">
+
+    {# Left column: Publications · Expertise · Academic Degrees #}
+    <div class="cv__left">
+
+      {% if lebenslauf.publications %}
+      <section class="cv__section">
+        <h2 class="cv__section-heading">{% if language == "de" %}Publikationen{% else %}Publications{% endif %}</h2>
+        <hr class="cv__section-rule">
+        {% for pub in lebenslauf.publications %}
+        <div class="cv__pub-entry">
+          <div class="cv__pub-year">{{ pub.year }}</div>
+          <div class="cv__pub-title">{{ pub.title }}</div>
+          <div class="cv__pub-desc">{{ pub.description }}{% if pub.url %} – <a href="{{ pub.url }}">Open</a>{% endif %}</div>
+        </div>
+        <hr class="cv__entry-rule">
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if lebenslauf.skills %}
+      <section class="cv__section">
+        <h2 class="cv__section-heading">Expertise</h2>
+        <hr class="cv__section-rule">
+        <div class="cv__tags">
+          {% for skill in lebenslauf.skills %}
+          <span class="cv__tag">{{ skill }}</span>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if lebenslauf.education %}
+      <section class="cv__section">
+        <h2 class="cv__section-heading">{% if language == "de" %}Ausbildung{% else %}Academic Degrees{% endif %}</h2>
+        <hr class="cv__section-rule">
+        {% for edu in lebenslauf.education %}
+        <div class="cv__edu-entry">
+          <div class="cv__edu-year">{{ edu.period }}</div>
+          <div class="cv__edu-degree">{{ edu.degree }}</div>
+          <div class="cv__edu-institution">{{ edu.institution }}</div>
+        </div>
+        <hr class="cv__entry-rule">
+        {% endfor %}
+      </section>
+      {% endif %}
+
+    </div>
+
+    {# Right column: Work Experience · Talks & Workshops · Tools #}
+    <div class="cv__right">
+
+      {% if lebenslauf.experience %}
+      <section class="cv__section">
+        <h2 class="cv__section-heading">{% if language == "de" %}Berufserfahrung{% else %}Work Experience{% endif %}</h2>
+        <hr class="cv__section-rule">
+        {% for job in lebenslauf.experience %}
+        <div class="cv__job-entry">
+          <div class="cv__job-period">{{ job.period }}</div>
+          <div class="cv__job-role">{{ job.role }}</div>
+          <div class="cv__job-company">{{ job.company }}</div>
+        </div>
+        <hr class="cv__entry-rule">
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if lebenslauf.talks %}
+      <section class="cv__section">
+        <h2 class="cv__section-heading">{% if language == "de" %}Vorträge & Workshops{% else %}Talks & Workshops{% endif %}</h2>
+        <hr class="cv__section-rule">
+        {% for talk in lebenslauf.talks %}
+        <div class="cv__talk-entry">
+          <div class="cv__talk-year">{{ talk.year }}</div>
+          <div class="cv__talk-title">{{ talk.title }}</div>
+          <div class="cv__talk-desc">{{ talk.description }}{% if talk.url %} – <a href="{{ talk.url }}">Open</a>{% endif %}</div>
+        </div>
+        <hr class="cv__entry-rule">
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if lebenslauf.tools_created %}
+      <section class="cv__section">
+        <h2 class="cv__section-heading">Tools</h2>
+        <hr class="cv__section-rule">
+        {% for tool in lebenslauf.tools_created %}
+        <div class="cv__tool-entry">
+          <div class="cv__tool-year">{{ tool.year }}</div>
+          <div class="cv__tool-title">{{ tool.title }}</div>
+          <div class="cv__tool-desc">{{ tool.description }}{% if tool.url %} – <a href="{{ tool.url }}">Show</a>{% endif %}</div>
+        </div>
+        <hr class="cv__entry-rule">
+        {% endfor %}
+      </section>
+      {% endif %}
+
+    </div>
+  </div>
+
+  {# ── Footer ──────────────────────────────────────────────────────── #}
+  <hr class="cv__footer-rule">
+  <footer class="cv__footer">
+    <div class="cv__footer-contact">
+      {{ lebenslauf.location }}{% if lebenslauf.website %} · {{ lebenslauf.website }}{% endif %}
+      <br>
+      {% if lebenslauf.email %}{{ lebenslauf.email }}{% endif %}{% if lebenslauf.phone %} · {{ lebenslauf.phone }}{% endif %}
+    </div>
+  </footer>
+
+</div>

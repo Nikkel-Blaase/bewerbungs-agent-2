@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ anschreiben.sender_name }} – {{ job_title }} bei {{ company_name }}</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/anschreiben.css">
+  <link rel="stylesheet" href="styles/lebenslauf.css">
+  <link rel="stylesheet" href="styles/referenzprojekte.css">
+</head>
+<body>
+
+  {# ── Page 1: Anschreiben ──────────────────────────────────────── #}
+  <div class="anschreiben-page">
+    {% include "anschreiben.html" %}
+  </div>
+
+  {# ── Page 2+: Lebenslauf ──────────────────────────────────────── #}
+  {% include "lebenslauf.html" %}
+
+  {# ── Pages 3+4: Referenzprojekte ─────────────────────────────── #}
+  {% if referenzprojekte %}
+  <div class="ref-page" style="page-break-before: always;">
+    {% include "referenzprojekte.html" %}
+  </div>
+  {% endif %}
+
+</body>
+</html>

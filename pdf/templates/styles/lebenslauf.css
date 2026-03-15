@@ -1,0 +1,234 @@
+/* ── CV (Lebenslauf) – Mockup Design ───────────────────────────── */
+
+.cv {
+  width: 100%;
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.cv__header {
+  text-align: center;
+  margin-bottom: 6mm;
+}
+
+.cv__name {
+  font-family: "Brandon Grotesque";
+  font-weight: 700;
+  font-size: 21pt;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 6mm;
+}
+
+.cv__highlights {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4mm;
+}
+
+.cv__highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 2mm;
+  font-family: "Dolly";
+  font-size: 9pt;
+  color: #333;
+}
+
+.cv__highlight-icon {
+  height: 5mm;
+  width: auto;
+}
+
+.cv__header-rule {
+  border: none;
+  border-top: 1pt solid #aaa;
+  margin: 0 0 8mm 0;
+}
+
+/* ── Body (two columns) ─────────────────────────────────────────── */
+.cv__body {
+  display: grid;
+  grid-template-columns: 42% 58%;
+  gap: 6mm;
+}
+
+/* ── Sections ───────────────────────────────────────────────────── */
+.cv__section {
+  margin-bottom: 5mm;
+}
+
+.cv__section-heading {
+  font-family: "Brandon Grotesque";
+  font-weight: 700;
+  font-size: 10pt;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  margin-bottom: 1.5mm;
+}
+
+.cv__left .cv__section-heading {
+  text-align: right;
+}
+
+.cv__section-rule {
+  border: none;
+  border-top: 1pt solid #aaa;
+  margin-bottom: 3mm;
+}
+
+.cv__entry-rule {
+  border: none;
+  border-top: 0.5pt solid #ddd;
+  margin: 2mm 0;
+}
+
+/* ── Publications (right-aligned) ───────────────────────────────── */
+.cv__pub-entry {
+  text-align: right;
+}
+
+.cv__pub-year {
+  font-family: "Dolly";
+  font-size: 9pt;
+  color: #555;
+}
+
+.cv__pub-title {
+  font-family: "Dolly";
+  font-style: italic;
+  font-size: 9pt;
+  color: #111;
+}
+
+.cv__pub-desc {
+  font-family: "Brandon Grotesque";
+  font-weight: 400;
+  font-size: 9pt;
+  color: #333;
+}
+
+/* ── Expertise tags ─────────────────────────────────────────────── */
+.cv__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5mm;
+  margin-top: 2mm;
+}
+
+.cv__tag {
+  font-family: "Brandon Grotesque";
+  font-size: 9pt;
+  border: 0.5pt solid #777;
+  padding: 1pt 4pt;
+  display: inline-block;
+  line-height: 1.4;
+}
+
+/* ── Academic Degrees (right-aligned) ───────────────────────────── */
+.cv__edu-entry {
+  text-align: right;
+}
+
+.cv__edu-year {
+  font-family: "Dolly";
+  font-size: 9pt;
+  color: #555;
+}
+
+.cv__edu-degree {
+  font-family: "Dolly";
+  font-style: italic;
+  font-size: 9pt;
+  color: #111;
+}
+
+.cv__edu-institution {
+  font-family: "Brandon Grotesque";
+  font-weight: 400;
+  font-size: 9pt;
+  color: #333;
+}
+
+/* ── Work Experience ────────────────────────────────────────────── */
+.cv__job-period {
+  font-family: "Dolly SC";
+  font-size: 9pt;
+  color: #333;
+  text-transform: uppercase;
+  margin-bottom: 0.5mm;
+}
+
+.cv__job-role {
+  font-family: "Brandon Grotesque";
+  font-weight: 700;
+  font-size: 10pt;
+  color: #111;
+}
+
+.cv__job-company {
+  font-family: "Brandon Grotesque";
+  font-weight: 400;
+  font-size: 9pt;
+  color: #333;
+}
+
+/* ── Talks & Workshops ──────────────────────────────────────────── */
+.cv__talk-year {
+  font-family: "Dolly SC";
+  font-size: 9pt;
+  color: #555;
+}
+
+.cv__talk-title {
+  font-family: "Brandon Grotesque";
+  font-weight: 700;
+  font-size: 10pt;
+  color: #111;
+}
+
+.cv__talk-desc {
+  font-family: "Brandon Grotesque";
+  font-weight: 400;
+  font-size: 9pt;
+  color: #333;
+}
+
+/* ── Tools ──────────────────────────────────────────────────────── */
+.cv__tool-year {
+  font-family: "Dolly SC";
+  font-size: 9pt;
+  color: #555;
+}
+
+.cv__tool-title {
+  font-family: "Brandon Grotesque";
+  font-weight: 700;
+  font-size: 10pt;
+  color: #111;
+}
+
+.cv__tool-desc {
+  font-family: "Brandon Grotesque";
+  font-weight: 400;
+  font-size: 9pt;
+  color: #333;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+.cv__footer-rule {
+  border: none;
+  border-top: 1pt solid #aaa;
+  margin-top: 5mm;
+}
+
+.cv__footer {
+  text-align: center;
+  padding-top: 2mm;
+}
+
+.cv__footer-contact {
+  font-family: "Dolly";
+  font-style: italic;
+  font-size: 9pt;
+  color: #444;
+}

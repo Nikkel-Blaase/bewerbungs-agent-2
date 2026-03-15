@@ -1,0 +1,143 @@
+/* ── Reference Projects (Referenzprojekte) ──────────────────────── */
+
+.ref {
+  width: 100%;
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.ref__header {
+  text-align: center;
+  margin-bottom: 6mm;
+}
+
+.ref__name {
+  font-family: "Brandon Grotesque";
+  font-weight: 700;
+  font-size: 22pt;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 2mm;
+}
+
+.ref__subtitle {
+  font-family: "Dolly SC";
+  font-size: 9pt;
+  letter-spacing: 2px;
+  color: #555;
+}
+
+.ref__header-rule {
+  border: none;
+  border-top: 1pt solid #aaa;
+  margin: 0 0 6mm 0;
+}
+
+/* ── Section ────────────────────────────────────────────────────── */
+.ref__section {
+  margin-bottom: 5mm;
+}
+
+.ref__section-heading {
+  font-family: "Brandon Grotesque";
+  font-weight: 700;
+  font-size: 10pt;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  text-align: center;
+  margin-bottom: 1.5mm;
+}
+
+.ref__section-rule {
+  border: none;
+  border-top: 1pt solid #aaa;
+  margin-bottom: 4mm;
+}
+
+/* ── Entry (two-column grid) ────────────────────────────────────── */
+.ref__entry {
+  display: grid;
+  grid-template-columns: 35% 65%;
+  gap: 6mm;
+  margin-bottom: 2mm;
+}
+
+.ref__entry-left {
+  text-align: right;
+}
+
+.ref__period {
+  font-family: "Dolly SC";
+  font-size: 9pt;
+  color: #333;
+  text-transform: uppercase;
+  margin-bottom: 0.5mm;
+}
+
+.ref__role {
+  font-family: "Dolly";
+  font-style: italic;
+  font-weight: 400;
+  font-size: 10pt;
+  color: #111;
+  margin-bottom: 0.5mm;
+}
+
+.ref__company {
+  font-family: "Brandon Grotesque";
+  font-weight: 400;
+  font-size: 9pt;
+  color: #333;
+  margin-bottom: 2mm;
+}
+
+.ref__tag {
+  font-family: "Brandon Grotesque";
+  font-size: 8pt;
+  border: 0.5pt solid #777;
+  padding: 1pt 4pt;
+  display: block;
+  text-align: right;
+  margin-top: 1.5mm;
+  line-height: 1.4;
+  color: #444;
+}
+
+/* ── Bullet list ────────────────────────────────────────────────── */
+.ref__bullets {
+  font-family: "Brandon Grotesque";
+  font-size: 9pt;
+  color: #222;
+  line-height: 1.5;
+  padding-left: 4mm;
+  margin: 0;
+}
+
+.ref__bullets li {
+  margin-bottom: 1mm;
+}
+
+/* ── Entry divider ──────────────────────────────────────────────── */
+.ref__entry-rule {
+  border: none;
+  border-top: 0.5pt solid #ddd;
+  margin: 3mm 0;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────── */
+.ref__footer-rule {
+  border: none;
+  border-top: 1pt solid #aaa;
+  margin-top: 5mm;
+}
+
+.ref__footer {
+  text-align: center;
+  padding-top: 2mm;
+}
+
+.ref__footer-contact {
+  font-family: "Dolly";
+  font-style: italic;
+  font-size: 9pt;
+  color: #444;
+}
