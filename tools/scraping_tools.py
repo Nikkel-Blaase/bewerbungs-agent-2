@@ -35,6 +35,10 @@ ATS_SELECTORS = {
 
 JS_HEAVY_DOMAINS = ["linkedin.com", "linkedin.de"]
 
+# Module-level cache: stores the last fetch_url result so extract_text_from_html
+# can fall back to it when the model omits large html/url parameters.
+_fetch_cache: dict = {}
+
 
 # ── Tool Definitions ──────────────────────────────────────────────────────────
 
@@ -67,7 +71,7 @@ EXTRACT_TEXT_FROM_HTML_TOOL = {
             "html": {"type": "string", "description": "Raw HTML string."},
             "url": {"type": "string", "description": "Original URL (used to pick selectors)."},
         },
-        "required": ["html", "url"],
+        "required": [],
     },
 }
 
@@ -125,7 +129,10 @@ def fetch_url(url: str, timeout: int = 15) -> dict:
     try:
         resp = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
         resp.raise_for_status()
-        return {"html": resp.text, "status_code": resp.status_code, "url": resp.url}
+        result = {"html": resp.text, "status_code": resp.status_code, "url": resp.url}
+        _fetch_cache["html"] = resp.text
+        _fetch_cache["url"] = str(resp.url)
+        return result
     except requests.exceptions.HTTPError as e:
         return {"error": f"HTTP error: {e}"}
     except requests.exceptions.ConnectionError:
@@ -144,7 +151,12 @@ def _detect_ats(url: str) -> str:
     return "generic"
 
 
-def extract_text_from_html(html: str, url: str) -> dict:
+def extract_text_from_html(html: str = None, url: str = None) -> dict:
+    # Fall back to cached values if model omitted large parameters
+    if not html:
+        html = _fetch_cache.get("html", "")
+    if not url:
+        url = _fetch_cache.get("url", "")
     ats = _detect_ats(url)
     soup = BeautifulSoup(html, "lxml")
 

@@ -62,6 +62,11 @@ Communication · Problem Solving · JavaScript
 
 ## Berufserfahrung
 
+### Product Management Bootcamp Participant
+**February 2026 – Present** (2 Monate) | Remote | Tags: Product Management Certification 
+
+---
+
 ### dev3pack Fellow — Dev3pack
 **Jun 2025 – Present** (10 Monate) | Remote | Tags: Formación / Education
 
