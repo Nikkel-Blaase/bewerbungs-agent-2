@@ -20,7 +20,7 @@ SUBMIT_LEBENSLAUF_TOOL = {
             "summary": {"type": "string", "description": "2-3 sentence professional summary."},
             "experience": {
                 "type": "array",
-                "description": "Work experience, ordered by relevance then recency.",
+                "description": "Work experience, ordered by recency (newest first).",
                 "items": {
                     "type": "object",
                     "properties": {
@@ -87,7 +87,7 @@ SUBMIT_LEBENSLAUF_TOOL = {
 SYSTEM_PROMPT_DE = """Du bist ein Experte für Lebenslauf-Optimierung.
 
 Deine Aufgabe:
-- Sortiere Berufserfahrungen nach Relevanz für die ausgeschriebene Stelle (nicht nur chronologisch)
+- Sortiere Berufserfahrungen chronologisch (neueste zuerst). Behalte die relevantesten Einträge (max 4), aber innerhalb dieser Auswahl gilt: neueste zuerst.
 - Formuliere Bullet Points um: aktionsorientiert, mit messbaren Ergebnissen wo möglich
 - Hebe relevante Skills für diese Stelle hervor
 - Erstelle eine professionelle Zusammenfassung (2-3 Sätze), die auf die Stelle zugeschnitten ist
@@ -112,7 +112,7 @@ Ruf am Ende submit_lebenslauf auf."""
 SYSTEM_PROMPT_EN = """You are an expert CV optimizer.
 
 Your task:
-- Reorder work experience by relevance to the target role (not just chronology)
+- Order work experience chronologically (newest first). Keep the most relevant entries (max 4), but within that selection: newest first.
 - Rewrite bullet points: action-oriented, with measurable results where possible
 - Highlight skills most relevant to this role
 - Create a professional summary (2-3 sentences) tailored to the position
@@ -273,7 +273,19 @@ Certifications: {', '.join(analysis.cv_data.certifications)}
         languages=submit_result.get("languages", []),
         certifications=submit_result.get("certifications", []),
         highlights=submit_result.get("highlights", analysis.cv_data.highlights),
-        publications=[CvPublication(**p) for p in submit_result.get("publications", [p.model_dump() for p in analysis.cv_data.publications])],
-        talks=[CvTalk(**t) for t in submit_result.get("talks", [t.model_dump() for t in analysis.cv_data.talks])],
-        tools_created=[CvTool(**t) for t in submit_result.get("tools_created", [t.model_dump() for t in analysis.cv_data.tools_created])],
+        publications=[CvPublication(**p) for p in sorted(
+            submit_result.get("publications", [p.model_dump() for p in analysis.cv_data.publications]),
+            key=lambda x: x.get("year", "") if isinstance(x, dict) else x.year,
+            reverse=True
+        )],
+        talks=[CvTalk(**t) for t in sorted(
+            submit_result.get("talks", [t.model_dump() for t in analysis.cv_data.talks]),
+            key=lambda x: x.get("year", "") if isinstance(x, dict) else x.year,
+            reverse=True
+        )],
+        tools_created=[CvTool(**t) for t in sorted(
+            submit_result.get("tools_created", [t.model_dump() for t in analysis.cv_data.tools_created]),
+            key=lambda x: x.get("year", "") if isinstance(x, dict) else x.year,
+            reverse=True
+        )],
     )

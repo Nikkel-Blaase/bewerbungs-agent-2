@@ -68,6 +68,8 @@ WICHTIG – Stilregeln:
 - section_labels: ['WER ICH BIN', 'WAS ICH MITBRINGE', 'WARUM [Firmenname]'] (Firmenname einsetzen).
 - Tagline: 4–5 kurze Stichworte aus dem Lebenslauf, durch | getrennt, Großbuchstaben.
 - Abschlussformel: "Mit freundlichen Grüßen"
+- Gedankenstriche (—) sind im Fließtext verboten (opening_paragraph, body_paragraphs,
+  closing_paragraph). Stattdessen Satzzeichen wie Punkt, Komma oder Doppelpunkt verwenden.
 
 K.O.-KOMPENSATION: Falls ko_compensations vorliegen, baue die fertige Formulierung
 in den "WER ICH BIN"-Paragraph ein — offensiv, nicht defensiv. Die Lücke nicht
@@ -119,6 +121,8 @@ IMPORTANT – Style rules:
 - section_labels: ['WHO I AM', 'WHAT I CAN DO FOR YOU', 'WHY [CompanyName]'] (insert actual company name).
 - Tagline: 4–5 short keywords from the CV, pipe-separated, uppercase.
 - Closing formula: "Yours sincerely," or "Best regards,"
+- Em dashes (—) are forbidden in body text (opening_paragraph, body_paragraphs,
+  closing_paragraph). Use full stops, commas, or colons instead.
 
 PAGE CONSTRAINT – The cover letter must fit on exactly one DIN A4 page:
 - opening_paragraph: exactly 1 sentence ("I am applying for the position of X at Y.")

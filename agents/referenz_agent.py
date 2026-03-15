@@ -45,7 +45,7 @@ Deine Aufgabe:
 - Wähle die 3–6 stellenrelevantesten Erfahrungseinträge aus dem Lebenslauf aus
 - Weise jedem Eintrag 2–4 Skill-Tags zu, die für die ausgeschriebene Stelle besonders relevant sind
 - Übersetze alle Bullet Points in PM-Sprache — behalte alle inhaltlichen Fakten, aber formuliere in der Sprache der Zielrolle
-- Reihenfolge: Relevanz für die Stelle zuerst, dann chronologisch
+- Reihenfolge: Relevanz für die Stelle zuerst. Bei gleicher Relevanz: neueste Einträge zuerst.
 
 AKTIVE ÜBERSETZUNG (Quereinsteiger):
 - Jobtitel NICHT ändern — aber Bullets in PM-Sprache übersetzen
@@ -61,7 +61,7 @@ Your task:
 - Select the 3–6 most job-relevant experience entries from the CV
 - Assign 2–4 skill tags per entry that are most relevant to the job posting
 - Translate all bullet points into PM language — preserve all factual content but reframe using product management vocabulary
-- Order: most relevant to the role first, then chronologically
+- Order: most relevant to the role first. If equally relevant: newest entries first.
 
 ACTIVE TRANSLATION (career changer):
 - Do NOT change job titles — but translate bullets into PM language
