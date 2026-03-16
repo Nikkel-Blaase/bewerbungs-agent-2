@@ -1,13 +1,24 @@
-"""Score Orchestrator: Runs only Steps 1–3 (Scrape → Analyze → Gap Assessment)."""
+"""Score Orchestrator: Runs only Steps 1–2 (Fetch → Mega-Analysis, no documents)."""
 from pathlib import Path
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
-from agents import scraper_agent, analyzer_agent, gap_assessment_agent
+from agents import mega_analysis_agent
+from tools.scraping_tools import fetch_url, extract_text_from_html, convert_to_markdown
+from tools.analysis_tools import detect_language
 
 console = Console()
 
-_FAST_MODEL = "claude-haiku-4-5-20251001"
+
+def _python_scrape(job_url: str) -> str:
+    """Pure Python scraping. Returns job_markdown."""
+    fetch_result = fetch_url(job_url)
+    if "error" in fetch_result:
+        raise RuntimeError(f"Failed to fetch job URL: {fetch_result['error']}")
+    html = fetch_result["html"]
+    extract_result = extract_text_from_html(html, job_url)
+    md_result = convert_to_markdown(extract_result["extracted_html"])
+    return md_result["markdown"]
 
 
 def run(
@@ -17,9 +28,15 @@ def run(
     lang_override: str | None = None,
     verbose: bool = False,
 ) -> dict:
-    """Run Steps 1–3 and return a score report dict (no PDF)."""
+    """Run Steps 1–2 and return a score report dict (no documents generated)."""
 
-    cv_markdown = Path(cv_path).read_text(encoding="utf-8")
+    cv_path_obj = Path(cv_path)
+    if cv_path_obj.suffix.lower() == ".pdf":
+        cv_markdown = None
+        cv_pdf_bytes = cv_path_obj.read_bytes()
+    else:
+        cv_markdown = cv_path_obj.read_text(encoding="utf-8")
+        cv_pdf_bytes = None
 
     with Progress(
         SpinnerColumn(),
@@ -30,56 +47,41 @@ def run(
         transient=False,
     ) as progress:
 
-        # ── Step 1: Scrape ────────────────────────────────────────────────────
-        task_scrape = progress.add_task("[1/3] Scraping job posting...", total=None)
-        try:
-            scraper_output = scraper_agent.run(job_url, model=_FAST_MODEL, verbose=verbose)
-        except RuntimeError as e:
-            progress.stop()
-            console.print(f"[red]Scraping failed:[/red] {e}")
-            raise
+        # ── Step 1: Python Pre-Processing (0 LLM calls) ───────────────────────
+        task_scrape = progress.add_task("[1/2] Fetching job posting...", total=None)
+        job_markdown = _python_scrape(job_url)
+        lang_detected = detect_language(job_markdown)["language"]
+        language = lang_override or lang_detected
         progress.update(
             task_scrape,
-            description=f"[1/3] Scraped: {scraper_output.job_title} @ {scraper_output.company_name}",
+            description=f"[1/2] Fetched ({len(job_markdown)} chars, lang={language})",
             completed=1,
             total=1,
         )
 
-        # ── Step 2: Analyze ───────────────────────────────────────────────────
-        task_analyze = progress.add_task("[2/3] Analyzing job & CV...", total=None)
-        analysis = analyzer_agent.run(
-            scraper_output.raw_markdown, cv_markdown, model=model, verbose=verbose
+        # ── Step 2: Mega-Analysis (1 Sonnet call) ─────────────────────────────
+        task_analyze = progress.add_task("[2/2] Mega-Analysis...", total=None)
+        mega = mega_analysis_agent.run(
+            job_markdown, cv_markdown, cv_pdf_bytes=cv_pdf_bytes, language=language, model=model, verbose=verbose
         )
         if lang_override:
-            analysis.language = lang_override
+            mega.language = lang_override
         progress.update(
             task_analyze,
-            description=f"[2/3] Language: {analysis.language} | Fit analyzed",
-            completed=1,
-            total=1,
-        )
-
-        # ── Step 3: Gap Assessment ────────────────────────────────────────────
-        task_gap = progress.add_task("[3/3] Gap Assessment...", total=None)
-        gap_assessment = gap_assessment_agent.run(
-            analysis, model=model, verbose=verbose, job_url=job_url
-        )
-        progress.update(
-            task_gap,
-            description=f"[3/3] Fit-Score: {gap_assessment.fit_score:.0f} | {gap_assessment.recommendation}",
+            description=f"[2/2] Fit-Score: {mega.gap.fit_score:.0f} | {mega.gap.recommendation}",
             completed=1,
             total=1,
         )
 
     return {
-        "job_title": analysis.job_data.title,
-        "company": analysis.job_data.company,
-        "fit_score": gap_assessment.fit_score,
-        "recommendation": gap_assessment.recommendation,
-        "recommendation_reason": gap_assessment.recommendation_reason,
-        "top_arguments": gap_assessment.top_arguments,
-        "gap_notes": gap_assessment.gap_notes,
-        "requirements_mapped": gap_assessment.requirements_mapped,
-        "covered_domain_keywords": gap_assessment.covered_domain_keywords,
-        "ko_compensations": gap_assessment.ko_compensations,
+        "job_title": mega.job_data.title,
+        "company": mega.job_data.company,
+        "fit_score": mega.gap.fit_score,
+        "recommendation": mega.gap.recommendation,
+        "recommendation_reason": mega.gap.recommendation_reason,
+        "top_arguments": mega.gap.top_arguments,
+        "gap_notes": mega.gap.gap_notes,
+        "requirements_mapped": mega.gap.requirements_mapped,
+        "covered_domain_keywords": mega.gap.covered_domain_keywords,
+        "ko_compensations": mega.gap.ko_compensations,
     }

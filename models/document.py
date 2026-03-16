@@ -50,7 +50,7 @@ class CvExperience(BaseModel):
 class CvEducation(BaseModel):
     degree: str
     institution: str
-    period: str
+    period: Optional[str] = None
     details: Optional[str] = None
 
 
@@ -188,6 +188,15 @@ class ReferenzprojekteData(BaseModel):
     website: Optional[str] = None
     email: str
     phone: str
+
+
+class MegaAnalysisOutput(BaseModel):
+    language: str  # "de" or "en"
+    job_data: JobData
+    cv_data: CvData
+    mapping: CvJobMapping
+    gap: GapAssessmentOutput
+    skill_translations: SkillTranslationOutput
 
 
 class ApplicationDocuments(BaseModel):

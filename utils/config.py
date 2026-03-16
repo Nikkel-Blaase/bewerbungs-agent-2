@@ -29,16 +29,16 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 WRITING_SAMPLES_DIR.mkdir(exist_ok=True)
 
 
-def messages_create_with_retry(client, max_retries: int = 5, **kwargs):
+def messages_create_with_retry(client, max_retries: int = 3, timeout: float = 600.0, **kwargs):
     """Call client.messages.create with exponential backoff on rate limit errors."""
     from anthropic import RateLimitError
-    delay = 60
+    delay = 10
     for attempt in range(max_retries):
         try:
-            return client.messages.create(**kwargs)
+            return client.messages.create(timeout=timeout, **kwargs)
         except RateLimitError:
             if attempt == max_retries - 1:
                 raise
             print(f"\n  [Rate limit] Waiting {delay}s before retry ({attempt + 1}/{max_retries})...")
             time.sleep(delay)
-            delay = min(delay * 2, 300)
+            delay = min(delay * 2, 60)

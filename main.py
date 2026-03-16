@@ -13,6 +13,8 @@ from rich.table import Table
 
 console = Console()
 
+ROOT_DIR = Path(__file__).parent
+
 
 @click.group()
 def cli():
@@ -25,16 +27,17 @@ def cli():
 @click.option("--url", required=True, help="URL of the job posting.")
 @click.option(
     "--cv",
-    required=True,
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to your CV in Markdown format.",
+    required=False,
+    default=None,
+    type=click.Path(dir_okay=False),
+    help="Path to CV (.md or .pdf). Defaults to CV-Input.md in project root.",
 )
 @click.option(
     "--output",
     default="./output",
     show_default=True,
     type=click.Path(file_okay=False),
-    help="Output directory for the generated PDF.",
+    help="Output directory for the generated Markdown.",
 )
 @click.option(
     "--lang",
@@ -49,9 +52,12 @@ def cli():
     help="Claude model to use.",
 )
 @click.option("--verbose", is_flag=True, help="Show detailed agent reasoning.")
-@click.option("--open", "open_pdf", is_flag=True, help="Open the PDF after generation.")
-def apply_cmd(url: str, cv: str, output: str, lang: str | None, model: str, verbose: bool, open_pdf: bool):
-    """Generate a tailored job application (cover letter + CV) as PDF."""
+@click.option("--open", "open_pdf", is_flag=True, help="Open the Markdown file after generation.")
+def apply_cmd(url: str, cv: str | None, output: str, lang: str | None, model: str, verbose: bool, open_pdf: bool):
+    """Generate a tailored job application (cover letter + CV) as Markdown."""
+
+    if cv is None:
+        cv = str(ROOT_DIR / "CV-Input.md")
 
     console.print(
         Panel(
@@ -103,9 +109,10 @@ def apply_cmd(url: str, cv: str, output: str, lang: str | None, model: str, verb
 @click.option("--url", required=True, help="URL of the job posting.")
 @click.option(
     "--cv",
-    required=True,
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to your CV in Markdown format.",
+    required=False,
+    default=None,
+    type=click.Path(dir_okay=False),
+    help="Path to CV (.md or .pdf). Defaults to CV-Input.md in project root.",
 )
 @click.option(
     "--lang",
@@ -120,8 +127,11 @@ def apply_cmd(url: str, cv: str, output: str, lang: str | None, model: str, verb
     help="Claude model to use.",
 )
 @click.option("--verbose", is_flag=True, help="Show detailed agent reasoning.")
-def score_cmd(url: str, cv: str, lang: str | None, model: str, verbose: bool):
+def score_cmd(url: str, cv: str | None, lang: str | None, model: str, verbose: bool):
     """Berechne den Fit-Score für eine Stelle ohne Bewerbungsunterlagen zu erstellen."""
+
+    if cv is None:
+        cv = str(ROOT_DIR / "CV-Input.md")
 
     console.print(
         Panel(

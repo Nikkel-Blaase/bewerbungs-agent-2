@@ -1,53 +1,10 @@
-"""WriterAgent: Generates cover letter (Anschreiben) template variables."""
+"""WriterAgent: Generates cover letter (Anschreiben). Single-shot, no tool-use loop."""
 import json
+import re
 from datetime import date
 from anthropic import Anthropic
-from models.document import AnalyzerOutput, AnschreibenData, GapAssessmentOutput, SkillTranslationOutput
+from models.document import MegaAnalysisOutput, AnschreibenData
 from utils.config import get_api_key, messages_create_with_retry
-
-SUBMIT_ANSCHREIBEN_TOOL = {
-    "name": "submit_anschreiben",
-    "description": "Submit the final cover letter content. Call this as the last step.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "sender_name": {"type": "string"},
-            "sender_address": {"type": "string", "description": "Full address, newlines as \\n"},
-            "sender_email": {"type": "string"},
-            "sender_phone": {"type": "string"},
-            "sender_city": {"type": "string"},
-            "date": {"type": "string", "description": "Date string, e.g. '13. März 2026'"},
-            "company_name": {"type": "string"},
-            "company_address": {"type": "string"},
-            "contact_person": {"type": "string"},
-            "salutation": {"type": "string", "description": "e.g. 'Sehr geehrte Damen und Herren,'"},
-            "subject": {"type": "string", "description": "Betreff line"},
-            "tagline": {
-                "type": "string",
-                "description": "Short professional tagline, pipe-separated keywords in uppercase, e.g. 'PRODUCT | STRATEGY | INNOVATION | LEADERSHIP'. Derived from CV strengths.",
-            },
-            "section_labels": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Exactly 3 labels for body sections. DE: ['WER ICH BIN', 'WAS ICH MITBRINGE', 'WARUM [FIRMA]']. EN: ['WHO I AM', 'WHAT I CAN DO FOR YOU', 'WHY [COMPANY]'].",
-            },
-            "opening_paragraph": {"type": "string"},
-            "body_paragraphs": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Exactly 3 paragraphs, matching section_labels in order.",
-            },
-            "closing_paragraph": {"type": "string"},
-            "closing_formula": {"type": "string", "description": "e.g. 'Mit freundlichen Grüßen'"},
-        },
-        "required": [
-            "sender_name", "sender_address", "sender_email", "sender_city",
-            "date", "company_name", "salutation", "subject",
-            "tagline", "section_labels",
-            "opening_paragraph", "body_paragraphs", "closing_paragraph", "closing_formula",
-        ],
-    },
-}
 
 SYSTEM_PROMPT_DE = """Du bist ein erfahrener Bewerbungsschreiber für Quereinsteiger. Verfasse ein professionelles,
 überzeugendes Anschreiben nach DIN 5008.
@@ -86,7 +43,14 @@ SEITENEINSCHRÄNKUNG – Das Anschreiben muss auf genau eine DIN-A4-Seite passen
 - closing_paragraph: genau 1 Satz ("Ich freue mich auf die Möglichkeit, ...")
   Der Closing-Paragraph ist KEIN Inhaltsparagraph – nur ein knapper Abschluss.
 
-Ruf am Ende submit_anschreiben auf."""
+Antworte NUR mit einem validen JSON-Objekt mit genau diesen Feldern:
+{
+  "sender_name": "", "sender_address": "", "sender_email": "",
+  "sender_phone": null, "sender_city": "", "date": "",
+  "company_name": "", "company_address": null, "contact_person": null,
+  "salutation": "", "subject": "", "tagline": "", "section_labels": [],
+  "opening_paragraph": "", "body_paragraphs": [], "closing_paragraph": "", "closing_formula": ""
+}"""
 
 SYSTEM_PROMPT_STYLE_DE = """
 
@@ -131,7 +95,14 @@ PAGE CONSTRAINT – The cover letter must fit on exactly one DIN A4 page:
 - closing_paragraph: exactly 1 sentence ("I look forward to the opportunity to...")
   The closing is NOT a content paragraph — it is a single forward-looking sentence.
 
-Call submit_anschreiben as the final step."""
+Reply ONLY with a valid JSON object with exactly these fields:
+{
+  "sender_name": "", "sender_address": "", "sender_email": "",
+  "sender_phone": null, "sender_city": "", "date": "",
+  "company_name": "", "company_address": null, "contact_person": null,
+  "salutation": "", "subject": "", "tagline": "", "section_labels": [],
+  "opening_paragraph": "", "body_paragraphs": [], "closing_paragraph": "", "closing_formula": ""
+}"""
 
 _GERMAN_MONTHS = {
     1: "Januar", 2: "Februar", 3: "März", 4: "April",
@@ -147,87 +118,89 @@ def _format_date(language: str) -> str:
     return today.strftime("%B %d, %Y")
 
 
+def _extract_json(text: str) -> dict:
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\n?", "", text)
+        text = re.sub(r"\n?```$", "", text)
+        text = text.strip()
+    return json.loads(text)
+
+
 def run(
-    analysis: AnalyzerOutput,
-    gap_assessment: GapAssessmentOutput | None = None,
+    mega: MegaAnalysisOutput,
     model: str = "claude-sonnet-4-6",
     verbose: bool = False,
     writing_samples: str | None = None,
-    skill_translation: SkillTranslationOutput | None = None,
 ) -> AnschreibenData:
     client = Anthropic(api_key=get_api_key())
-    language = analysis.language
+    language = mega.language
     base_system = SYSTEM_PROMPT_DE if language == "de" else SYSTEM_PROMPT_EN
     style_addendum = SYSTEM_PROMPT_STYLE_DE if language == "de" else SYSTEM_PROMPT_STYLE_EN
     system = base_system + (style_addendum if writing_samples else "")
 
-    gap_section = ""
-    if gap_assessment is not None:
-        ko_comp_block = ""
-        if gap_assessment.ko_compensations:
-            ko_comp_block = f"""
+    # Build gap section
+    gap = mega.gap
+    ko_comp_block = ""
+    if gap.ko_compensations:
+        ko_comp_block = f"""
 **K.O.-Kompensations-Formulierungen (in "WER ICH BIN" einbauen):**
-{chr(10).join(f'- {c}' for c in gap_assessment.ko_compensations)}
+{chr(10).join(f'- {c}' for c in gap.ko_compensations)}
 """
-        domain_kw_block = ""
-        if gap_assessment.covered_domain_keywords:
-            domain_kw_block = f"""
+    domain_kw_block = ""
+    if gap.covered_domain_keywords:
+        domain_kw_block = f"""
 **Domain-Keywords des Unternehmens (durch Profil gedeckt, in "WARUM [FIRMA]" verwenden):**
-{chr(10).join(f'- {k}' for k in gap_assessment.covered_domain_keywords)}
+{chr(10).join(f'- {k}' for k in gap.covered_domain_keywords)}
 """
-        skill_translation_block = ""
-        if skill_translation and skill_translation.translations:
-            lines = []
-            for t in skill_translation.translations:
-                warning = f" ⚠️ im Gespräch vorbereiten: {t.writer_warning}" if t.writer_warning else ""
-                lines.append(
-                    f"- {t.cover_letter_formulation} (Beleg: {t.evidence}, Stärke: {t.credibility}){warning}"
-                )
-            narrative = (
-                f"\n**Narrative Klammer:** {skill_translation.narrative_frame}"
-                if skill_translation.narrative_frame
-                else ""
-            )
-            skill_translation_block = f"""
+    skill_translation_block = ""
+    st = mega.skill_translations
+    if st.translations:
+        lines = []
+        for t in st.translations:
+            warning = f" im Gespräch vorbereiten: {t.writer_warning}" if t.writer_warning else ""
+            lines.append(f"- {t.cover_letter_formulation} (Beleg: {t.evidence}, Stärke: {t.credibility}){warning}")
+        narrative = f"\n**Narrative Klammer:** {st.narrative_frame}" if st.narrative_frame else ""
+        skill_translation_block = f"""
 **Skill-Übersetzungen (fertige Formulierungen — direkt verwenden):**
 {chr(10).join(lines)}{narrative}
 """
 
-        gap_section = f"""
-**Gap Assessment (Fit-Score: {gap_assessment.fit_score:.0f} | {gap_assessment.recommendation}):**
+    gap_section = f"""
+**Gap Assessment (Fit-Score: {gap.fit_score:.0f} | {gap.recommendation}):**
 
 Top-Argumente (diese verwenden):
-{chr(10).join(f'- {a}' for a in gap_assessment.top_arguments)}
+{chr(10).join(f'- {a}' for a in gap.top_arguments)}
 
 Lücken (proaktiv adressieren):
-{chr(10).join(f'- {n}' for n in gap_assessment.gap_notes)}
+{chr(10).join(f'- {n}' for n in gap.gap_notes)}
 {ko_comp_block}{domain_kw_block}{skill_translation_block}"""
 
     prompt = f"""Write a cover letter for:
 
-**Position:** {analysis.job_data.title} at {analysis.job_data.company}
-**Location:** {analysis.job_data.location or 'not specified'}
-**Contact:** {analysis.job_data.contact_person or 'not specified'}
+**Position:** {mega.job_data.title} at {mega.job_data.company}
+**Location:** {mega.job_data.location or 'not specified'}
+**Contact:** {mega.job_data.contact_person or 'not specified'}
 
-**Applicant:** {analysis.cv_data.name}
-**Email:** {analysis.cv_data.email or ''}
-**Phone:** {analysis.cv_data.phone or ''}
-**Location:** {analysis.cv_data.location or ''}
+**Applicant:** {mega.cv_data.name}
+**Email:** {mega.cv_data.email or ''}
+**Phone:** {mega.cv_data.phone or ''}
+**Location:** {mega.cv_data.location or ''}
 
 **Key selling points:**
-{chr(10).join(f'- {p}' for p in analysis.mapping.key_selling_points)}
+{chr(10).join(f'- {p}' for p in mega.mapping.key_selling_points)}
 
 **Matching skills:**
-{chr(10).join(f'- {s}' for s in analysis.mapping.matching_skills[:10])}
+{chr(10).join(f'- {s}' for s in mega.mapping.matching_skills[:10])}
 
 **Most relevant experience:**
-{chr(10).join(f'- {e}' for e in analysis.mapping.relevant_experience[:5])}
+{chr(10).join(f'- {e}' for e in mega.mapping.relevant_experience[:5])}
 
 **Job requirements summary:**
-{chr(10).join(f'- {r}' for r in analysis.job_data.requirements[:10])}
+{chr(10).join(f'- {r}' for r in mega.job_data.requirements[:10])}
 
 **Keywords (diese Begriffe wörtlich im Anschreiben einbauen):**
-{chr(10).join(f'- {k}' for k in analysis.job_data.keywords[:15])}
+{chr(10).join(f'- {k}' for k in mega.job_data.keywords[:15])}
 {gap_section}
 Today's date: {_format_date(language)}
 {f"""
@@ -237,71 +210,43 @@ Analysiere diese Texte und übernimm den charakteristischen Stil – professiona
 ---
 {writing_samples}
 ---
-""" if writing_samples else ""}
-"""
+""" if writing_samples else ""}"""
 
-    messages = [{"role": "user", "content": prompt}]
-    submit_result = None
+    response = messages_create_with_retry(
+        client,
+        model=model,
+        max_tokens=2500,
+        system=system,
+        messages=[{"role": "user", "content": prompt}],
+    )
 
-    for iteration in range(8):
-        response = messages_create_with_retry(
-            client,
-            model=model,
-            max_tokens=4096,
-            system=system,
-            tools=[SUBMIT_ANSCHREIBEN_TOOL],
-            messages=messages,
-        )
+    if verbose:
+        usage = response.usage
+        print(f"  [Writer] Tokens: {usage.input_tokens} in, {usage.output_tokens} out")
 
-        messages.append({"role": "assistant", "content": response.content})
+    text = "".join(block.text for block in response.content if hasattr(block, "text"))
 
-        if verbose:
-            for block in response.content:
-                if hasattr(block, "type") and block.type == "text":
-                    print(f"  [Writer] {block.text[:200]}")
-                elif hasattr(block, "type") and block.type == "tool_use":
-                    print(f"  [Writer] → {block.name}")
-
-        tool_results = []
-        for block in response.content:
-            if block.type != "tool_use":
-                continue
-            if block.name == "submit_anschreiben":
-                submit_result = block.input
-                result_content = json.dumps({"status": "submitted"})
-            else:
-                result_content = json.dumps({"error": f"Unknown tool: {block.name}"})
-
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": result_content,
-            })
-
-        if tool_results:
-            messages.append({"role": "user", "content": tool_results})
-        else:
-            break
-
-    if submit_result is None:
-        raise RuntimeError("WriterAgent did not call submit_anschreiben")
+    try:
+        result = _extract_json(text)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"WriterAgent returned invalid JSON: {e}\n\nResponse:\n{text[:500]}")
 
     return AnschreibenData(
-        sender_name=submit_result.get("sender_name", analysis.cv_data.name),
-        sender_address=submit_result.get("sender_address", analysis.cv_data.location or ""),
-        sender_email=submit_result.get("sender_email", analysis.cv_data.email or ""),
-        sender_phone=submit_result.get("sender_phone", analysis.cv_data.phone),
-        sender_city=submit_result.get("sender_city", analysis.cv_data.location or ""),
-        date=submit_result.get("date", _format_date(language)),
-        company_name=submit_result.get("company_name", analysis.job_data.company),
-        company_address=submit_result.get("company_address"),
-        contact_person=submit_result.get("contact_person"),
-        salutation=submit_result["salutation"],
-        subject=submit_result["subject"],
-        tagline=submit_result.get("tagline"),
-        section_labels=submit_result.get("section_labels", []),
-        opening_paragraph=submit_result["opening_paragraph"],
-        body_paragraphs=submit_result["body_paragraphs"],
-        closing_paragraph=submit_result["closing_paragraph"],
-        closing_formula=submit_result["closing_formula"],
+        sender_name=result.get("sender_name", mega.cv_data.name),
+        sender_address=result.get("sender_address", mega.cv_data.location or ""),
+        sender_email=result.get("sender_email", mega.cv_data.email or ""),
+        sender_phone=result.get("sender_phone", mega.cv_data.phone),
+        sender_city=result.get("sender_city", mega.cv_data.location or ""),
+        date=result.get("date", _format_date(language)),
+        company_name=result.get("company_name", mega.job_data.company),
+        company_address=result.get("company_address"),
+        contact_person=result.get("contact_person"),
+        salutation=result["salutation"],
+        subject=result["subject"],
+        tagline=result.get("tagline"),
+        section_labels=result.get("section_labels", []),
+        opening_paragraph=result["opening_paragraph"],
+        body_paragraphs=result["body_paragraphs"],
+        closing_paragraph=result["closing_paragraph"],
+        closing_formula=result["closing_formula"],
     )

@@ -2,7 +2,7 @@
 
 Multi-Agent-System zur automatischen Erstellung von PM-Bewerbungsunterlagen für Quereinsteiger — powered by Claude (Anthropic API).
 
-**URL rein → fertige Bewerbungs-PDF raus.**
+**URL rein → fertige Bewerbungs-Markdown raus.**
 
 ---
 
@@ -13,11 +13,11 @@ Multi-Agent-System zur automatischen Erstellung von PM-Bewerbungsunterlagen für
 3. Berechnet einen Fit-Score (0–100) mit Empfehlung
 4. Übersetzt übertragbare Skills in PM-Sprache
 5. Schreibt ein personalisiertes Anschreiben, optimiert den Lebenslauf, erstellt eine Referenzprojekte-Seite
-6. Rendert alles als ein zusammenhängendes PDF
+6. Rendert alles als eine zusammenhängende **Markdown**-Datei
 
 Zwei Modi:
-- **`apply`** — vollständige Bewerbungsunterlagen als PDF
-- **`score`** — nur Fit-Score berechnen, kein PDF
+- **`apply`** — vollständige Bewerbungsunterlagen als **Markdown-Datei**
+- **`score`** — nur Fit-Score berechnen, keine Datei
 
 ---
 
@@ -52,7 +52,6 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 | Datei | Beschreibung |
 |---|---|
-| `photo.png` / `photo.jpg` | Bewerbungsfoto im Projektverzeichnis — wird automatisch erkannt und ins PDF eingefügt |
 | `writing_samples/*.md` oder `*.txt` | Schreibstilproben — der WriterAgent passt den Anschreiben-Stil daran an |
 
 ---
@@ -69,11 +68,11 @@ python main.py apply --url "https://..." --cv CV-Input.md
 |---|---|---|
 | `--url` | (Pflicht) | URL der Stellenanzeige |
 | `--cv` | (Pflicht) | Pfad zur CV-Markdown-Datei |
-| `--output` | `./output` | Ausgabeverzeichnis für das PDF |
+| `--output` | `./output` | Ausgabeverzeichnis für die **Markdown-Datei** |
 | `--lang [de\|en]` | auto | Sprache manuell überschreiben (sonst automatisch erkannt) |
 | `--model` | `claude-sonnet-4-6` | Claude-Modell |
 | `--verbose` | — | Detailliertes Agent-Reasoning in der Konsole anzeigen |
-| `--open` | — | PDF nach Generierung automatisch öffnen |
+| `--open` | — | **Datei** nach Generierung automatisch öffnen |
 
 ### `score` — nur Fit-Score (kein PDF)
 
@@ -87,16 +86,16 @@ Flags: `--url`, `--cv`, `--lang`, `--model`, `--verbose` (wie oben, ohne `--outp
 
 ## Output
 
-Das generierte PDF wird gespeichert unter:
+Die generierte Markdown-Datei wird gespeichert unter:
 
 ```
-output/{company-title-slug}_score{FIT_SCORE}_application.pdf
+output/{company-title-slug}_score{FIT_SCORE}_application.md
 ```
 
-Beispiel: `output/check24-produktmanager-ai_score78_application.pdf`
+Beispiel: `output/webid-solutions-head-of-product_score86_application.md`
 
-Das PDF enthält:
-- Anschreiben (1 Seite, mit Foto falls vorhanden)
+Die Datei enthält:
+- Anschreiben (1 Seite)
 - Lebenslauf (optimiert für die Stelle)
 - Referenzprojekte (1 Seite)
 
@@ -128,14 +127,14 @@ Der Score wird auf 100 normalisiert. Schwellenwerte:
 
 ## Agent-Pipeline
 
-Das System läuft in 6 Schritten:
+Das System läuft in 4 Stufen:
 
-1. **ScraperAgent** (`claude-haiku-4-5`) — Scrapt die Stellenanzeige per URL und extrahiert Titel, Unternehmen, Anforderungen als strukturiertes Markdown
-2. **AnalyzerAgent** (`claude-sonnet-4-6`) — Analysiert CV und Stelle: erkennt Sprache, mappt Skills, identifiziert Key Selling Points
-3. **GapAssessmentAgent** (`claude-sonnet-4-6`) — Berechnet Fit-Score, recherchiert optional die Unternehmenswebsite, erstellt Kompensationsformulierungen für Lücken
-4. **SkillTranslationAgent** (`claude-sonnet-4-6`) — Übersetzt übertragbare Skills aus dem Lebenslauf in konkrete PM-Formulierungen
-5. **WriterAgent** + **CvAgent** + **ReferenzAgent** (parallel) — Schreibt Anschreiben (Sonnet), optimiert CV-Daten (Haiku), erstellt Referenzprojekte-Seite (Haiku)
-6. **PDF-Rendering** — Jinja2-Templates + WeasyPrint → kombiniertes PDF
+1. **Python Pre-Processing** (kein LLM) — Scraping via `fetch_url` + `extract_text_from_html`, Sprache automatisch erkennen
+2. **MegaAnalysisAgent** (1× Sonnet) — Ersetzt AnalyzerAgent + GapAssessmentAgent + SkillTranslationAgent: vollständige Analyse, Fit-Score, Skill-Übersetzungen in einem einzigen Call
+3. **Parallel: WriterAgent** (1× Sonnet) **+ CvReferenzAgent** (1× Haiku) — Anschreiben und CV+Referenzprojekte gleichzeitig generiert
+4. **Markdown-Rendering** (kein LLM) — `render_markdown.py` → einzelne `.md`-Datei
+
+> **4 LLM-Calls pro Bewerbung · ~$0.085/Bewerbung (−66 % vs. vorheriger Architektur)**
 
 ---
 
@@ -181,30 +180,33 @@ Berufserfahrung sollte als Bullet-Points pro Stelle formatiert sein — der Anal
 ├── requirements.txt
 ├── .env                       # API Key (nicht einchecken)
 ├── CV-Input.md                # Dein Lebenslauf (selbst anlegen)
-├── photo.png / photo.jpg      # Bewerbungsfoto (optional)
 │
 ├── agents/
 │   ├── orchestrator.py        # Koordiniert die volle Pipeline (apply)
 │   ├── score_orchestrator.py  # Nur Score-Pipeline (score)
-│   ├── scraper_agent.py       # Stellt Webseiten als Markdown bereit
-│   ├── analyzer_agent.py      # CV + Stelle → strukturierte Analyse
-│   ├── gap_assessment_agent.py # Fit-Score + Empfehlung
-│   ├── skill_translation_agent.py # Skill-Übersetzungen
-│   ├── writer_agent.py        # Anschreiben
-│   ├── cv_agent.py            # Lebenslauf-Daten
-│   └── referenz_agent.py      # Referenzprojekte
+│   ├── mega_analysis_agent.py # Analyse + Fit-Score + Skill-Übersetzungen (1× Sonnet)
+│   ├── writer_agent.py        # Anschreiben (1× Sonnet)
+│   ├── cv_referenz_agent.py   # CV + Referenzprojekte (1× Haiku)
+│   ├── scraper_agent.py       # [veraltet] Stellt Webseiten als Markdown bereit
+│   ├── analyzer_agent.py      # [veraltet] CV + Stelle → strukturierte Analyse
+│   ├── gap_assessment_agent.py # [veraltet] Fit-Score + Empfehlung
+│   ├── skill_translation_agent.py # [veraltet] Skill-Übersetzungen
+│   ├── cv_agent.py            # [veraltet] Lebenslauf-Daten
+│   └── referenz_agent.py      # [veraltet] Referenzprojekte
 │
 ├── models/
 │   └── document.py            # Pydantic-Datenmodelle
 │
-├── pdf/
+├── pdf/                       # [veraltet, nicht mehr genutzt]
 │   ├── renderer.py            # WeasyPrint-Rendering
 │   └── templates/             # Jinja2-HTML + CSS pro Dokument
 │
 ├── tools/                     # Wiederverwendbare Tool-Funktionen (Scraping, Analyse)
-├── utils/                     # Config, Markdown-Parser
+├── utils/
+│   ├── config.py              # Konfiguration
+│   └── render_markdown.py     # Markdown-Rendering → .md-Ausgabedatei
 │
 ├── writing_samples/           # Schreibstilproben (optional, .md oder .txt)
 ├── jobs/                      # Gescrapte Stellenanzeigen (auto-generiert)
-└── output/                    # Fertige PDFs (auto-generiert)
+└── output/                    # Fertige Markdown-Dateien (auto-generiert)
 ```
