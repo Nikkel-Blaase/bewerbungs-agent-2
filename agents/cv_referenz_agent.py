@@ -74,7 +74,21 @@ Generate two documents in a single JSON response:
 
 ## OUTPUT FORMAT
 
-Reply ONLY with a valid JSON object. No text before or after, no markdown wrapper."""
+Reply ONLY with a valid JSON object. No text before or after, no markdown wrapper.
+
+{
+  "lebenslauf": {
+    "name": "", "email": null, "phone": null, "location": null,
+    "linkedin": null, "github": null, "website": null, "summary": "",
+    "experience": [{"role": "", "company": "", "period": "", "bullets": []}],
+    "education": [{"degree": "", "institution": "", "period": "", "details": null}],
+    "skills": [], "languages": [], "certifications": [], "highlights": [],
+    "publications": [], "talks": [], "tools_created": []
+  },
+  "referenzprojekte": {
+    "entries": [{"period": "", "role": "", "company": "", "url": null, "tags": [], "bullets": []}]
+  }
+}"""
 
 
 def _extract_json(text: str) -> dict:

@@ -140,7 +140,7 @@ def run(
     response = messages_create_with_retry(
         client,
         model=model,
-        max_tokens=8192,
+        max_tokens=16384,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )

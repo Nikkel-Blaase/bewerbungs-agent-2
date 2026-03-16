@@ -1,4 +1,4 @@
-# Dayana Mick Forero – Curriculum Vitae
+# Vorname Nachmname – Curriculum Vitae
 
 ## Kontakt
 
