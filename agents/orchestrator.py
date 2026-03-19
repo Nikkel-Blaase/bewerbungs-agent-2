@@ -201,8 +201,14 @@ def run(
 
     score = mega.gap.fit_score
     color = "green" if score >= 70 else "yellow" if score >= 40 else "red"
+
+    archetype_line = ""
+    if mega.pm_archetype:
+        archetype_line = f"PM-Archetyp: {mega.pm_archetype.primary.capitalize()} (Konfidenz: {mega.pm_archetype.confidence})\n"
+
     console.print(Panel(
         f"[bold {color}]Fit-Score: {score:.0f} / 100[/bold {color}]\n"
+        f"{archetype_line}"
         f"Empfehlung: {mega.gap.recommendation}\n"
         f"{mega.gap.recommendation_reason}",
         title="Gap Assessment",

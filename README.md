@@ -11,9 +11,10 @@ Multi-Agent-System zur automatischen Erstellung von PM-Bewerbungsunterlagen für
 1. Scrapt eine Stellenanzeige per URL
 2. Analysiert CV und Stelle auf Übereinstimmungen und Lücken
 3. Berechnet einen Fit-Score (0–100) mit Empfehlung
-4. Übersetzt übertragbare Skills in PM-Sprache
-5. Schreibt ein personalisiertes Anschreiben, optimiert den Lebenslauf, erstellt eine Referenzprojekte-Seite
-6. Rendert alles als eine zusammenhängende **Markdown**-Datei
+4. Bestimmt den PM-Archetyp der Stelle (z. B. Execution, Strategy, Growth) mit Konfidenz
+5. Übersetzt übertragbare Skills in PM-Sprache
+6. Schreibt ein personalisiertes Anschreiben, optimiert den Lebenslauf, erstellt eine Referenzprojekte-Seite
+7. Rendert alles als eine zusammenhängende **Markdown**-Datei
 
 Drei Modi:
 - **`apply`** — vollständige Bewerbungsunterlagen als **Markdown-Datei**
@@ -141,6 +142,17 @@ Der Score wird auf 100 normalisiert. Schwellenwerte:
 | ≥ 70 | `bewerben` — direkt bewerben |
 | 45–69 | `bewerben_mit_hinweis` — Lücken im Anschreiben adressieren |
 | < 45 oder unkompensierbare K.O.-Lücke | `nicht_empfohlen` |
+
+Nach jedem Lauf wird das Gap Assessment im Terminal ausgegeben:
+
+```
+╭─────────────────── Gap Assessment ───────────────────╮
+│ Fit-Score: 72 / 100                                  │
+│ PM-Archetyp: Execution (Konfidenz: hoch)             │
+│ Empfehlung: bewerben                                 │
+│ ...                                                  │
+╰──────────────────────────────────────────────────────╯
+```
 
 ---
 
