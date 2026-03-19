@@ -15,9 +15,10 @@ Multi-Agent-System zur automatischen Erstellung von PM-Bewerbungsunterlagen für
 5. Schreibt ein personalisiertes Anschreiben, optimiert den Lebenslauf, erstellt eine Referenzprojekte-Seite
 6. Rendert alles als eine zusammenhängende **Markdown**-Datei
 
-Zwei Modi:
+Drei Modi:
 - **`apply`** — vollständige Bewerbungsunterlagen als **Markdown-Datei**
 - **`score`** — nur Fit-Score berechnen, keine Datei
+- **`feedback`** — Outcome einer vergangenen Bewerbung nachtragen (sent / interview / rejected / withdrawn)
 
 ---
 
@@ -53,6 +54,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | Datei | Beschreibung |
 |---|---|
 | `writing_samples/*.md` oder `*.txt` | Schreibstilproben — der WriterAgent passt den Anschreiben-Stil daran an |
+| `learning/applications.jsonl` | Lernhistorie — wird automatisch angelegt und mit jeder Bewerbung erweitert |
 
 ---
 
@@ -74,13 +76,30 @@ python main.py apply --url "https://..." --cv CV-Input.md
 | `--verbose` | — | Detailliertes Agent-Reasoning in der Konsole anzeigen |
 | `--open` | — | **Datei** nach Generierung automatisch öffnen |
 
-### `score` — nur Fit-Score (kein PDF)
+### `score` — nur Fit-Score (kein Dokument)
 
 ```bash
 python main.py score --url "https://..." --cv CV-Input.md
 ```
 
 Flags: `--url`, `--cv`, `--lang`, `--model`, `--verbose` (wie oben, ohne `--output` und `--open`)
+
+### `feedback` — Outcome nachtragen
+
+```bash
+# Tabelle der letzten 10 Bewerbungen anzeigen:
+python main.py feedback --outcome sent
+
+# Outcome für eine konkrete Bewerbung setzen:
+python main.py feedback --id "2026-03-19T14:32:01_acme-product-manager" --outcome interview
+```
+
+| Outcome | Bedeutung |
+|---|---|
+| `sent` | Bewerbung abgeschickt |
+| `interview` | Zum Gespräch eingeladen |
+| `rejected` | Absage erhalten |
+| `withdrawn` | Selbst zurückgezogen |
 
 ---
 
@@ -130,11 +149,24 @@ Der Score wird auf 100 normalisiert. Schwellenwerte:
 Das System läuft in 4 Stufen:
 
 1. **Python Pre-Processing** (kein LLM) — Scraping via `fetch_url` + `extract_text_from_html`, Sprache automatisch erkennen
-2. **MegaAnalysisAgent** (1× Sonnet) — Ersetzt AnalyzerAgent + GapAssessmentAgent + SkillTranslationAgent: vollständige Analyse, Fit-Score, Skill-Übersetzungen in einem einzigen Call
-3. **Parallel: WriterAgent** (1× Sonnet) **+ CvReferenzAgent** (1× Haiku) — Anschreiben und CV+Referenzprojekte gleichzeitig generiert
-4. **Markdown-Rendering** (kein LLM) — `render_markdown.py` → einzelne `.md`-Datei
+2. **MegaAnalysisAgent** (1× Sonnet) — Vollständige Analyse, Fit-Score, Skill-Übersetzungen in einem einzigen Call. Erhält ab der 2. Bewerbung automatisch einen kompakten Lernhistorie-Block aus vergangenen Runs
+3. **Parallel: WriterAgent** (1× Sonnet) **+ CvReferenzAgent** (1× Haiku) — Anschreiben und CV+Referenzprojekte gleichzeitig generiert. WriterAgent erhält ebenfalls die Lernhistorie
+4. **Markdown-Rendering + Persistierung** (kein LLM) — `render_markdown.py` → einzelne `.md`-Datei, danach Analyse in `learning/applications.jsonl` gespeichert
 
 > **4 LLM-Calls pro Bewerbung · ~$0.085/Bewerbung (−66 % vs. vorheriger Architektur)**
+
+---
+
+## Self-Learning Loop
+
+Mit jeder Bewerbung lernt das System dazu. Nach dem ersten Run wird `learning/applications.jsonl` angelegt. Ab dem zweiten Run injiziert das System automatisch einen `## LERNHISTORIE`-Block in MegaAnalysis und WriterAgent — ohne extra LLM-Call, pure Python-Aggregation:
+
+- **Erprobte Übersetzungen** — Skill-Mappings, die bereits als `stark` bewertet wurden (≥ 2× aufgetreten), werden priorisiert wiederverwendet
+- **Wiederkehrende Lücken** — Lücken, die in > 25 % der Runs auftauchen, werden proaktiv adressiert
+- **K.O.-Kompensationen** — Bewährte Formulierungen werden dedupliziert weitergegeben
+- **PM-Archetyp-Häufigkeit** — Zeigt, welche Unternehmenstypen bisher analysiert wurden
+
+Die Lernhistorie bleibt unter 600 Token und ist rein additiv — kein Modell wird fine-getuned, kein Prompt überschrieben.
 
 ---
 
@@ -176,7 +208,7 @@ Berufserfahrung sollte als Bullet-Points pro Stelle formatiert sein — der Anal
 
 ```
 .
-├── main.py                    # CLI-Einstiegspunkt (click)
+├── main.py                    # CLI-Einstiegspunkt (click): apply / score / feedback
 ├── requirements.txt
 ├── .env                       # API Key (nicht einchecken)
 ├── CV-Input.md                # Dein Lebenslauf (selbst anlegen)
@@ -186,27 +218,22 @@ Berufserfahrung sollte als Bullet-Points pro Stelle formatiert sein — der Anal
 │   ├── score_orchestrator.py  # Nur Score-Pipeline (score)
 │   ├── mega_analysis_agent.py # Analyse + Fit-Score + Skill-Übersetzungen (1× Sonnet)
 │   ├── writer_agent.py        # Anschreiben (1× Sonnet)
-│   ├── cv_referenz_agent.py   # CV + Referenzprojekte (1× Haiku)
-│   ├── scraper_agent.py       # [veraltet] Stellt Webseiten als Markdown bereit
-│   ├── analyzer_agent.py      # [veraltet] CV + Stelle → strukturierte Analyse
-│   ├── gap_assessment_agent.py # [veraltet] Fit-Score + Empfehlung
-│   ├── skill_translation_agent.py # [veraltet] Skill-Übersetzungen
-│   ├── cv_agent.py            # [veraltet] Lebenslauf-Daten
-│   └── referenz_agent.py      # [veraltet] Referenzprojekte
+│   └── cv_referenz_agent.py   # CV + Referenzprojekte (1× Haiku)
+│
+├── learning/
+│   ├── __init__.py
+│   └── application_log.py     # Persistenz + Aggregation für den Self-Learning Loop
 │
 ├── models/
 │   └── document.py            # Pydantic-Datenmodelle
 │
-├── pdf/                       # [veraltet, nicht mehr genutzt]
-│   ├── renderer.py            # WeasyPrint-Rendering
-│   └── templates/             # Jinja2-HTML + CSS pro Dokument
-│
 ├── tools/                     # Wiederverwendbare Tool-Funktionen (Scraping, Analyse)
 ├── utils/
-│   ├── config.py              # Konfiguration
+│   ├── config.py              # Konfiguration + Verzeichnis-Konstanten
 │   └── render_markdown.py     # Markdown-Rendering → .md-Ausgabedatei
 │
 ├── writing_samples/           # Schreibstilproben (optional, .md oder .txt)
 ├── jobs/                      # Gescrapte Stellenanzeigen (auto-generiert)
+├── learning/applications.jsonl # Lernhistorie (auto-generiert)
 └── output/                    # Fertige Markdown-Dateien (auto-generiert)
 ```

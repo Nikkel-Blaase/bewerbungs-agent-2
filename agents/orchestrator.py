@@ -7,8 +7,9 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
 from agents import mega_analysis_agent, cv_referenz_agent, writer_agent
+from learning.application_log import save_application, build_lessons_context
 from models.document import ApplicationDocuments
-from tools.scraping_tools import fetch_url, extract_text_from_html, convert_to_markdown
+from tools.scraping_tools import fetch_url, extract_text_from_html, convert_to_markdown, fetch_company_context
 from tools.analysis_tools import detect_language
 from utils.config import OUTPUT_DIR, ROOT_DIR, WRITING_SAMPLES_DIR, JOBS_DIR
 from utils.render_markdown import render_markdown
@@ -18,8 +19,8 @@ console = Console()
 _HAIKU = "claude-haiku-4-5-20251001"
 
 
-def _python_scrape(job_url: str) -> tuple[str, str]:
-    """Pure Python scraping — zero LLM calls. Returns (job_markdown, slug)."""
+def _python_scrape(job_url: str) -> tuple[str, str, str]:
+    """Pure Python scraping — zero LLM calls. Returns (job_markdown, slug, html)."""
     fetch_result = fetch_url(job_url)
     if "error" in fetch_result:
         raise RuntimeError(f"Failed to fetch job URL: {fetch_result['error']}")
@@ -34,7 +35,7 @@ def _python_scrape(job_url: str) -> tuple[str, str]:
     job_file = JOBS_DIR / f"{slug}.md"
     job_file.write_text(job_markdown, encoding="utf-8")
 
-    return job_markdown, slug
+    return job_markdown, slug, html
 
 
 def run(
@@ -80,20 +81,27 @@ def run(
 
         # ── Step 1: Python Pre-Processing (0 LLM calls) ───────────────────────
         task_scrape = progress.add_task("[1/4] Fetching job posting...", total=None)
-        job_markdown, _slug = _python_scrape(job_url)
+        job_markdown, _slug, job_html = _python_scrape(job_url)
         lang_detected = detect_language(job_markdown)["language"]
         language = lang_override or lang_detected
-        progress.update(
-            task_scrape,
-            description=f"[1/4] Fetched ({len(job_markdown)} chars, lang={language})",
-            completed=1,
-            total=1,
-        )
+
+        company_context = None
+        try:
+            company_context = fetch_company_context(job_url, job_html)
+        except Exception:
+            pass
+
+        scrape_desc = f"[1/4] Fetched ({len(job_markdown)} chars, lang={language}"
+        scrape_desc += ", +company research)" if company_context else ", no company research)"
+        progress.update(task_scrape, description=scrape_desc, completed=1, total=1)
 
         # ── Step 2: Mega-Analysis (1 Sonnet call) ─────────────────────────────
         task_analyze = progress.add_task("[2/4] Mega-Analysis (job + CV + gap + skills)...", total=None)
+        lessons_context = build_lessons_context()
         mega = mega_analysis_agent.run(
-            job_markdown, cv_markdown, cv_pdf_bytes=cv_pdf_bytes, language=language, model=model, verbose=verbose
+            job_markdown, cv_markdown, cv_pdf_bytes=cv_pdf_bytes,
+            company_context=company_context, language=language, model=model, verbose=verbose,
+            lessons_context=lessons_context,
         )
         if lang_override:
             mega.language = lang_override
@@ -112,6 +120,11 @@ def run(
             console.print(f"  Fit-Score: [bold]{mega.gap.fit_score:.0f}[/bold] | {mega.gap.recommendation}")
             console.print(f"  Skill-Übersetzungen: {len(mega.skill_translations.translations)}")
             console.print(f"  Top-Argumente: {len(mega.gap.top_arguments)}")
+            if mega.pm_archetype:
+                arch = mega.pm_archetype
+                console.print(f"  PM-Archetyp: [bold]{arch.primary}[/bold] (Konfidenz: {arch.confidence})")
+            if lessons_context:
+                console.print(f"  [Lernhistorie] Kontext geladen ({len(lessons_context)} chars)")
 
         # ── Step 3: Parallel document generation (2 calls) ───────────────────
         task_write = progress.add_task("[3/4] Generating documents (parallel)...", total=None)
@@ -123,7 +136,7 @@ def run(
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_writer = executor.submit(
-                writer_agent.run, mega, model, verbose, writing_samples_text
+                writer_agent.run, mega, model, verbose, writing_samples_text, lessons_context
             )
             future_cv_ref = executor.submit(
                 cv_referenz_agent.run, mega, _HAIKU, verbose
@@ -176,6 +189,7 @@ def run(
         output_path = output_dir / f"{company_slug}_{score_str}_application.md"
 
         render_markdown(documents, output_path, language=mega.language)
+        save_application(mega, job_url)
         progress.update(
             task_render,
             description=f"[4/4] Saved: {output_path.name}",

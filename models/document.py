@@ -107,6 +107,7 @@ class CvJobMapping(BaseModel):
 class RequirementMapping(BaseModel):
     requirement: str
     category: str  # "direkt" | "übersetzbar" | "lücke" | "ko_luecke_kompensiert" | "ko_luecke_unkompensierbar"
+    is_ko: bool = False          # True für ALLE K.O.-Anforderungen, auch wenn erfüllt
     translation_suggestion: Optional[str] = None
     compensation_note: Optional[str] = None
 
@@ -190,6 +191,14 @@ class ReferenzprojekteData(BaseModel):
     phone: str
 
 
+class PmArchetype(BaseModel):
+    primary: str                     # "execution" | "collaborative" | "technical" | "strategic"
+    secondary: Optional[str] = None
+    confidence: str                  # "hoch" | "mittel" | "niedrig"
+    reasoning: str                   # 1–2 Sätze welche Signale zur Einschätzung geführt haben
+    writer_hint: str                 # Welche Erfahrungen vorne stehen + Framing-Richtung
+
+
 class MegaAnalysisOutput(BaseModel):
     language: str  # "de" or "en"
     job_data: JobData
@@ -197,6 +206,7 @@ class MegaAnalysisOutput(BaseModel):
     mapping: CvJobMapping
     gap: GapAssessmentOutput
     skill_translations: SkillTranslationOutput
+    pm_archetype: Optional[PmArchetype] = None
 
 
 class ApplicationDocuments(BaseModel):

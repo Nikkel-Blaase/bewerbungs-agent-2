@@ -203,3 +203,50 @@ SCRAPER_TOOL_HANDLERS = {
     "convert_to_markdown": lambda inp: convert_to_markdown(**inp),
     "submit_scraper_result": lambda inp: inp,  # Pass-through; handled by agent
 }
+
+_KNOWN_ATS = {
+    "greenhouse.io", "lever.co", "workday.com",
+    "stepstone.de", "xing.com", "linkedin.com",
+}
+
+
+def fetch_company_context(job_url: str, job_html: str) -> str | None:
+    """Scrape the employer's homepage and return up to 2000 chars of Markdown.
+
+    Returns None on any error or if the result is too short (JS-only page).
+    Never raises.
+    """
+    from urllib.parse import urlparse
+    from bs4 import BeautifulSoup
+
+    parsed = urlparse(job_url)
+    domain = parsed.netloc.lower().lstrip("www.")
+    company_url = None
+
+    if not any(ats in domain for ats in _KNOWN_ATS):
+        company_url = f"{parsed.scheme}://{parsed.netloc}"
+    else:
+        _JUNK = {*_KNOWN_ATS, "twitter.com", "facebook.com", "instagram.com",
+                 "youtube.com", "glassdoor.com", "kununu.com"}
+        soup = BeautifulSoup(job_html, "lxml")
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if not href.startswith("http"):
+                continue
+            link_domain = urlparse(href).netloc.lower().lstrip("www.")
+            if link_domain and link_domain != domain and not any(j in link_domain for j in _JUNK):
+                company_url = href
+                break
+
+    if not company_url:
+        return None
+
+    try:
+        fetch_result = fetch_url(company_url, timeout=10)
+        if "error" in fetch_result:
+            return None
+        extract_result = extract_text_from_html(fetch_result["html"], company_url)
+        md = convert_to_markdown(extract_result["extracted_html"]).get("markdown", "")
+        return md[:2000] if len(md) >= 100 else None
+    except Exception:
+        return None

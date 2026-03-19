@@ -262,5 +262,45 @@ def _print_score_report(result: dict) -> None:
     )
 
 
+# ── feedback subcommand ───────────────────────────────────────────────────────
+
+@cli.command("feedback")
+@click.option("--id", "record_id", default=None, help="Application record ID.")
+@click.option(
+    "--outcome",
+    required=True,
+    type=click.Choice(["sent", "interview", "rejected", "withdrawn"]),
+)
+def feedback_cmd(record_id: str | None, outcome: str):
+    """Tag the outcome of a past application."""
+    from learning.application_log import list_recent_ids, tag_outcome
+
+    if record_id is None:
+        records = list_recent_ids(10)
+        if not records:
+            console.print("[yellow]Noch keine Bewerbungen gespeichert.[/yellow]")
+            return
+        table = Table(title="Letzte Bewerbungen", show_header=True, header_style="bold")
+        table.add_column("ID", style="cyan")
+        table.add_column("Datum", min_width=10)
+        table.add_column("Unternehmen", min_width=20)
+        table.add_column("Stelle", min_width=20)
+        table.add_column("Score", justify="right", min_width=5)
+        table.add_column("Outcome", min_width=12)
+        for r in records:
+            table.add_row(
+                r["id"], r["timestamp"][:10], r["company"], r["job_title"],
+                f"{r['fit_score']:.0f}", r["outcome"] or "—",
+            )
+        console.print(table)
+        console.print("\nMit [cyan]--id <ID>[/cyan] Outcome setzen.")
+        return
+
+    if tag_outcome(record_id, outcome):
+        console.print(f"[green]✓[/green] {record_id} → {outcome}")
+    else:
+        console.print(f"[red]Nicht gefunden:[/red] {record_id}")
+
+
 if __name__ == "__main__":
     cli()

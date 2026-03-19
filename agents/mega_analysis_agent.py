@@ -6,7 +6,7 @@ from anthropic import Anthropic
 from models.document import (
     MegaAnalysisOutput, JobData, CvData, CvJobMapping, CvExperience, CvEducation,
     CvPublication, CvTalk, CvTool, GapAssessmentOutput, RequirementMapping,
-    SkillTranslation, SkillTranslationOutput,
+    SkillTranslation, SkillTranslationOutput, PmArchetype,
 )
 from utils.config import get_api_key, messages_create_with_retry
 
@@ -27,6 +27,10 @@ Bewerte als ehrlicher Karriereberater. Kategorien für jede Anforderung:
 - **lücke**: weder direkt noch übersetzbar abgedeckt (compensation_note: wie im Anschreiben proaktiv adressieren)
 - **ko_luecke_kompensiert**: K.O.-Anforderung (Formulierungen wie "zwingend", "erforderlich", "mindestens X Jahre", "verhandlungssicher", "fließend") aber kompensierbar — in ko_compensations fertige offensive Formulierung für das Anschreiben
 - **ko_luecke_unkompensierbar**: K.O.-Anforderung ohne Kompensationsmöglichkeit → recommendation = "nicht_empfohlen"
+
+Setze zusätzlich `is_ko: true` für ALLE K.O.-Anforderungen (auch wenn durch das Profil erfüllt),
+erkennbar an: "zwingend", "erforderlich", "Voraussetzung", "mindestens X Jahre", "verhandlungssicher",
+"fließend", explizite Abschlüsse/Zertifizierungen als Bedingung.
 
 Fit-Score-Logik (0–100):
 - direkt × 3 Punkte, übersetzbar × 1.5, lücke × 0, ko_luecke_kompensiert × 0.5, ko_luecke_unkompensierbar × 0
@@ -53,6 +57,27 @@ Nur für Anforderungen mit Kategorie "übersetzbar" oder "ko_luecke_kompensiert"
 Ehrlichkeit vor Übertreibung. Spezifität: kein "ich habe Erfahrung mit X", sondern konkrete Firma/Projekt/Zahl.
 strong_count: Anzahl "stark"-Übersetzungen. narrative_frame: optionale übergreifende Stärke.
 
+## SCHRITT 4: PM-ARCHETYP-ERKENNUNG
+
+Bestimme den PM-Archetyp den das Unternehmen sucht. Signale aus Stellenanzeige UND Unternehmensrecherche.
+
+Archetypen:
+- **execution**: OKRs, Metriken, Business Impact, KPIs, Wachstumsziele, data-driven
+- **collaborative**: Stakeholder, Alignment, cross-functional, Matrix-Org, Konsens
+- **technical**: Engineering, Architektur, technische Tiefe, B2B-Infrastruktur, API-first
+- **strategic**: Vision, Markt, Expansion, Go-to-Market, Series-A/B-Signale, Positionierung
+
+Unternehmens-Heuristiken (falls Unternehmensrecherche vorhanden):
+- B2B-Infra/Plattform → eher technical | Series-A-Startup → eher strategic
+- Enterprise/Matrix → eher collaborative | Growth-Phase mit OKRs → eher execution
+
+Primär: ein Archetyp. Sekundär: optional, nur wenn klar erkennbar.
+Bei confidence = "niedrig": writer_hint auf universelles Trio fokussieren (Kommunikation, Execution, Product Sense).
+
+writer_hint: Konkrete Anweisung welche Erfahrungen aus dem Kandidatenprofil vorne stehen sollen
+und in welche Richtung das Framing geht (z.B. "Stelle Full-Stack-Hintergrund als technischen
+PM-Vorteil dar; führe mit Infrastruktur-Erfahrung aus [Firma X]").
+
 ## OUTPUT FORMAT
 
 Antworte NUR mit einem validen JSON-Objekt. Kein Text davor oder danach, kein Markdown-Code-Block.
@@ -77,7 +102,7 @@ Antworte NUR mit einem validen JSON-Objekt. Kein Text davor oder danach, kein Ma
     "relevant_experience_keys": [], "key_selling_points": [], "tone_recommendation": "professional"
   },
   "gap": {
-    "requirements_mapped": [{"requirement": "", "category": "direkt", "translation_suggestion": null, "compensation_note": null}],
+    "requirements_mapped": [{"requirement": "", "category": "direkt", "is_ko": false, "translation_suggestion": null, "compensation_note": null}],
     "fit_score": 0.0, "recommendation": "bewerben", "recommendation_reason": "",
     "top_arguments": [], "gap_notes": [], "covered_domain_keywords": [], "ko_compensations": []
   },
@@ -85,6 +110,13 @@ Antworte NUR mit einem validen JSON-Objekt. Kein Text davor oder danach, kein Ma
     "translations": [{"requirement": "", "original_experience": "", "cover_letter_formulation": "",
                       "cv_bullet": "", "evidence": "", "credibility": "stark", "writer_warning": null}],
     "strong_count": 0, "risky_translations": [], "narrative_frame": null
+  },
+  "pm_archetype": {
+    "primary": "execution",
+    "secondary": null,
+    "confidence": "hoch",
+    "reasoning": "",
+    "writer_hint": ""
   }
 }"""
 
@@ -103,13 +135,26 @@ def run(
     job_markdown: str,
     cv_markdown: str | None,
     cv_pdf_bytes: bytes | None = None,
+    company_context: str | None = None,
     language: str | None = None,
     model: str = "claude-sonnet-4-6",
     verbose: bool = False,
+    lessons_context: str | None = None,
 ) -> MegaAnalysisOutput:
     client = Anthropic(api_key=get_api_key())
 
     lang_hint = f"\n\nDie Stellenanzeige ist auf {'Deutsch' if language == 'de' else 'Englisch'}." if language else ""
+
+    company_block = ""
+    if company_context:
+        company_block = (
+            f"\n\n## UNTERNEHMENSRECHERCHE\n"
+            f"Nutze diese Informationen für SCHRITT 2 (covered_domain_keywords enrichment — nur wenn durch "
+            f"Profil gedeckt) und SCHRITT 4 (PM-Archetyp-Heuristik aus Unternehmenskontext).\n\n"
+            f"{company_context}"
+        )
+
+    lessons_block = f"\n\n{lessons_context}" if lessons_context else ""
 
     if cv_pdf_bytes:
         user_content = [
@@ -119,6 +164,8 @@ def run(
                     f"Analysiere diese Stellenanzeige und diesen Lebenslauf (PDF beigefügt).{lang_hint}\n\n"
                     f"## STELLENANZEIGE\n{job_markdown}\n\n"
                     f"## LEBENSLAUF\nSiehe beigefügtes PDF-Dokument."
+                    f"{company_block}"
+                    f"{lessons_block}"
                 ),
             },
             {
@@ -135,6 +182,8 @@ def run(
             f"Analysiere diese Stellenanzeige und diesen Lebenslauf.{lang_hint}\n\n"
             f"## STELLENANZEIGE\n{job_markdown}\n\n"
             f"## LEBENSLAUF\n{cv_markdown}"
+            f"{company_block}"
+            f"{lessons_block}"
         )
 
     response = messages_create_with_retry(
@@ -227,6 +276,7 @@ def run(
         RequirementMapping(
             requirement=r["requirement"],
             category=r["category"],
+            is_ko=r.get("is_ko", False),
             translation_suggestion=r.get("translation_suggestion"),
             compensation_note=r.get("compensation_note"),
         )
@@ -269,6 +319,17 @@ def run(
         narrative_frame=st_raw.get("narrative_frame"),
     )
 
+    pm_arch_raw = data.get("pm_archetype")
+    pm_archetype = None
+    if pm_arch_raw:
+        pm_archetype = PmArchetype(
+            primary=pm_arch_raw.get("primary", "execution"),
+            secondary=pm_arch_raw.get("secondary"),
+            confidence=pm_arch_raw.get("confidence", "niedrig"),
+            reasoning=pm_arch_raw.get("reasoning", ""),
+            writer_hint=pm_arch_raw.get("writer_hint", ""),
+        )
+
     return MegaAnalysisOutput(
         language=language or data.get("language", "de"),
         job_data=job_data,
@@ -276,4 +337,5 @@ def run(
         mapping=mapping,
         gap=gap,
         skill_translations=skill_translations,
+        pm_archetype=pm_archetype,
     )

@@ -132,6 +132,7 @@ def run(
     model: str = "claude-sonnet-4-6",
     verbose: bool = False,
     writing_samples: str | None = None,
+    lessons_context: str | None = None,
 ) -> AnschreibenData:
     client = Anthropic(api_key=get_api_key())
     language = mega.language
@@ -166,6 +167,18 @@ def run(
 {chr(10).join(lines)}{narrative}
 """
 
+    archetype_block = ""
+    if mega.pm_archetype:
+        arch = mega.pm_archetype
+        secondary_note = f" (sekundär: {arch.secondary})" if arch.secondary else ""
+        archetype_block = f"""
+**PM-Archetyp des Unternehmens: {arch.primary.upper()}{secondary_note} (Konfidenz: {arch.confidence})**
+{arch.reasoning}
+
+Framing-Anweisung:
+{arch.writer_hint}
+"""
+
     gap_section = f"""
 **Gap Assessment (Fit-Score: {gap.fit_score:.0f} | {gap.recommendation}):**
 
@@ -174,7 +187,9 @@ Top-Argumente (diese verwenden):
 
 Lücken (proaktiv adressieren):
 {chr(10).join(f'- {n}' for n in gap.gap_notes)}
-{ko_comp_block}{domain_kw_block}{skill_translation_block}"""
+{ko_comp_block}{domain_kw_block}{skill_translation_block}{archetype_block}"""
+
+    lessons_block = f"\n{lessons_context}\n" if lessons_context else ""
 
     prompt = f"""Write a cover letter for:
 
@@ -202,7 +217,7 @@ Lücken (proaktiv adressieren):
 **Keywords (diese Begriffe wörtlich im Anschreiben einbauen):**
 {chr(10).join(f'- {k}' for k in mega.job_data.keywords[:15])}
 {gap_section}
-Today's date: {_format_date(language)}
+{lessons_block}Today's date: {_format_date(language)}
 {f"""
 ## Schreibstil-Referenz (Originalstimme der Person)
 Analysiere diese Texte und übernimm den charakteristischen Stil – professionalisiert auf Bewerbungsniveau:

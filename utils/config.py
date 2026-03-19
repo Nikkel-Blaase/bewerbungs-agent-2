@@ -24,9 +24,12 @@ OUTPUT_DIR = _root / "output"
 TEMPLATES_DIR = _root / "pdf" / "templates"
 WRITING_SAMPLES_DIR = _root / "writing_samples"
 
+LEARNING_DIR = _root / "learning"
+
 JOBS_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
 WRITING_SAMPLES_DIR.mkdir(exist_ok=True)
+LEARNING_DIR.mkdir(exist_ok=True)
 
 
 def messages_create_with_retry(client, max_retries: int = 3, timeout: float = 600.0, **kwargs):
