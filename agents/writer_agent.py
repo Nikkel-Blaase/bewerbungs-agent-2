@@ -29,8 +29,9 @@ WICHTIG – Stilregeln:
   closing_paragraph). Stattdessen Satzzeichen wie Punkt, Komma oder Doppelpunkt verwenden.
 
 K.O.-KOMPENSATION: Falls ko_compensations vorliegen, baue die fertige Formulierung
-in den "WER ICH BIN"-Paragraph ein — offensiv, nicht defensiv. Die Lücke nicht
-verschweigen, aber als alternativen Weg positionieren, gestützt durch konkreten Beleg.
+in den "WER ICH BIN"-Paragraph ein — direkt und selbstbewusst. Erwähne die fehlende
+Anforderung NICHT im Text. Keine Vergleiche ("Anstelle von", "statt eines X"), keine
+Relativierungen ("die ich als vergleichbar verstehe"). Nenne einfach, was vorhanden ist.
 
 DOMAIN-KEYWORDS: Falls covered_domain_keywords vorliegen, verwende sie gezielt
 im "WARUM [FIRMA]"-Paragraph. Nicht einfach einstreuen — mit einer konkreten
@@ -230,7 +231,7 @@ Analysiere diese Texte und übernimm den charakteristischen Stil – professiona
     response = messages_create_with_retry(
         client,
         model=model,
-        max_tokens=2500,
+        max_tokens=4000,
         system=system,
         messages=[{"role": "user", "content": prompt}],
     )

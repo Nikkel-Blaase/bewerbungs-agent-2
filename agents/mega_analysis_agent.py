@@ -25,7 +25,7 @@ Bewerte als ehrlicher Karriereberater. Kategorien für jede Anforderung:
 - **direkt**: vollständig durch nachgewiesene Erfahrung erfüllt
 - **übersetzbar**: übertragbare Fähigkeiten vorhanden (translation_suggestion: welche konkrete Erfahrung aus dem Lebenslauf lässt sich wie übersetzen)
 - **lücke**: weder direkt noch übersetzbar abgedeckt (compensation_note: wie im Anschreiben proaktiv adressieren)
-- **ko_luecke_kompensiert**: K.O.-Anforderung (Formulierungen wie "zwingend", "erforderlich", "mindestens X Jahre", "verhandlungssicher", "fließend") aber kompensierbar — in ko_compensations fertige offensive Formulierung für das Anschreiben
+- **ko_luecke_kompensiert**: K.O.-Anforderung (Formulierungen wie "zwingend", "erforderlich", "mindestens X Jahre", "verhandlungssicher", "fließend") aber kompensierbar — in ko_compensations fertige offensive Formulierung für das Anschreiben. WICHTIG: Keine Vergleichskonstrukte ("Anstelle von...", "statt eines X", "als vergleichbar"). Formuliere nur die vorhandene Stärke, ohne die Lücke zu nennen.
 - **ko_luecke_unkompensierbar**: K.O.-Anforderung ohne Kompensationsmöglichkeit → recommendation = "nicht_empfohlen"
 
 Setze zusätzlich `is_ko: true` für ALLE K.O.-Anforderungen (auch wenn durch das Profil erfüllt),
